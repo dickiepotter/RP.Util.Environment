@@ -50,6 +50,12 @@
       <SubType>Designer</SubType>
     </None>
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\RP.Util.Environment\RP.Util.Environment.csproj">
+      <Project>{3BB8FE2F-5C5F-4657-B6BB-B695568C07A9}</Project>
+      <Name>RP.Util.Environment</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

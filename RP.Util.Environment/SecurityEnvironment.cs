@@ -18,70 +18,112 @@
         /// Check if the application is in Development mode (This requires an AppSetting Environment of Develop, Debug compile and cannot have been deployed using clickOnce)
         /// </summary>
         /// <returns>True if the application is in development mode</returns>
-        public static bool IsInDevelopment()
+        public static bool IsInDevelopment
         {
-            // Does the configuration specify an AppSetting called Environment with the value Development
-            bool validAppSetting;
-
-            try
+            get
             {
-                validAppSetting = 
-                    (ConfigurationManager.AppSettings.AllKeys.Contains("Environment") &&
-                        ConfigurationManager.AppSettings["Environment"].Equals("development", StringComparison.OrdinalIgnoreCase))
-                    ||
-                    (ConfigurationManager.AppSettings.AllKeys.Contains("environment") &&
-                        ConfigurationManager.AppSettings["environment"].Equals("development", StringComparison.OrdinalIgnoreCase));
+                // Does the configuration specify an AppSetting called Environment with the value Development
+                bool validAppSetting;
+
+                try
+                {
+                    validAppSetting = (ConfigurationManager.AppSettings.AllKeys.Contains("Environment")
+                                       && ConfigurationManager.AppSettings["Environment"].Equals(
+                                           "development",
+                                           StringComparison.OrdinalIgnoreCase))
+                                      || (ConfigurationManager.AppSettings.AllKeys.Contains("environment")
+                                          && ConfigurationManager.AppSettings["environment"].Equals(
+                                              "development",
+                                              StringComparison.OrdinalIgnoreCase));
+                }
+                catch (ConfigurationErrorsException)
+                {
+                    // Could not retrive the configuration setting, so it must be missing
+                    validAppSetting = false;
+                }
+
+                // Has the application been built with debugging enabled
+                var validBuildFlags =
+                    Assembly.GetEntryAssembly()
+                        .GetCustomAttributes(false)
+                        .OfType<DebuggableAttribute>()
+                        .Any(x => x.IsJITTrackingEnabled);
+
+                // Is the application deployed using ClickOnce
+                var validNetworkDeploy = !ApplicationDeployment.IsNetworkDeployed;
+
+                return validAppSetting && validBuildFlags && validNetworkDeploy;
             }
-            catch (ConfigurationErrorsException)
-            {
-                // Could not retrive the configuration setting, so it must be missing
-                validAppSetting = false;
-            }
-
-            // Has the application been built with debugging enabled
-            var validBuildFlags =
-                Assembly.GetEntryAssembly()
-                    .GetCustomAttributes(false)
-                    .OfType<DebuggableAttribute>()
-                    .Any(x => x.IsJITTrackingEnabled);
-
-            // Is the application deployed using ClickOnce
-            var validNetworkDeploy = !ApplicationDeployment.IsNetworkDeployed;
-
-            return validAppSetting && validBuildFlags && validNetworkDeploy;
         }
 
         /// <summary>
         /// Check if it is reasonably safe to allow logins to be bypassed (This requires the current user to be a local administrator and the application to be in development mode)
         /// </summary>
         /// <returns>True if it is reasonably safe to allow login to be bypassed</returns>
-        public static bool IsSafeToBypassLogin()
+        public static bool IsSafeToBypassLogin
         {
-           return IsInDevelopment() && IsLocalAdministrator();
+            get
+            {
+                return IsInDevelopment && IsLocalAdministrator;
+            }
         }
 
         /// <summary>
         /// Is the current Windows user a local machine administrator
         /// </summary>
         /// <returns>True if the current user is a local machine administrator</returns>
-        public static bool IsLocalAdministrator()
+        public static bool IsLocalAdministrator
         {
-            try
+            get
+            {
+                try
+                {
+                    var identity = WindowsIdentity.GetCurrent();
+
+                    if (identity == null)
+                    {
+                        return false;
+                    }
+
+                    var principal = new WindowsPrincipal(identity);
+                    return principal.IsInRole(WindowsBuiltInRole.Administrator);
+                }
+                catch (SecurityException)
+                {
+                    // Did not have permission to check permissions, so obviously not an admin
+                    return false;
+                }
+            }
+        }
+
+        public static string WindowsUsername
+        {
+            get
             {
                 var identity = WindowsIdentity.GetCurrent();
 
                 if (identity == null)
                 {
-                    return false;
+                    return null;
                 }
 
-                var principal = new WindowsPrincipal(identity);
-                return principal.IsInRole(WindowsBuiltInRole.Administrator);
+                return identity.Name;
             }
-            catch (SecurityException)
+        }
+
+        public static string WindowsUsernameWithoutDomain
+        {
+            get
             {
-                // Did not have permission to check permissions, so obviously not an admin
-                return false;
+                var identity = WindowsIdentity.GetCurrent();
+
+                if (identity == null)
+                {
+                    return null;
+                }
+
+                var name = identity.Name;
+                return name.Substring(name.IndexOf('\\')).TrimStart('\\');
             }
         }
     }
